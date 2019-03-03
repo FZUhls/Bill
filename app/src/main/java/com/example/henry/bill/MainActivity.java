@@ -88,15 +88,6 @@ public class MainActivity extends AppCompatActivity {
                 showPopupMenu(view,position);
             }
         });
-        Button button_3 = findViewById(R.id.button_3);
-        button_3.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                DataSupport.deleteAll(Biller.class);
-                billerList.clear();
-                adapter_2.notifyDataSetChanged();
-            }
-        });
     }
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
