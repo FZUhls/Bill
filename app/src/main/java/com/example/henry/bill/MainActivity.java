@@ -16,17 +16,15 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.DatePicker;
+import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import org.litepal.LitePal;
 import org.litepal.crud.DataSupport;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
-
-import static org.litepal.crud.DataSupport.delete;
-
 // TODO: 2019/3/1  根据月 日 改变RecyclerView 还没完成
 public class MainActivity extends AppCompatActivity {
     private List<Biller> billerList = new ArrayList<>();
@@ -37,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView allpay;
     private TextView allincome;
     private TextView Total;
+    private int year=0,month=0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,6 +48,9 @@ public class MainActivity extends AppCompatActivity {
         Total = findViewById(R.id.total);
         NavigationView navView = findViewById (R.id.nav_view);
         floatingActionButton = findViewById(R.id.add_button);
+        allpay.setText(AllPay());
+        allincome.setText(AllIncome());
+        Total.setText(inAll());
         floatingActionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -80,8 +82,6 @@ public class MainActivity extends AppCompatActivity {
         adapter_2.setOnItemClickListener(new MyAdapter_2.OnItemClickListener() {
             @Override
             public void onItemClick(View view, int position) {
-                Biller biller =billerList.get(position);
-                Toast.makeText(MainActivity.this,"This bill cost+"+biller.getCost()+" yuan",Toast.LENGTH_SHORT).show();
             }
             @Override
             public void onItemLongClick(View view, int position) {
@@ -105,7 +105,43 @@ public class MainActivity extends AppCompatActivity {
                 drawerLayout.openDrawer(GravityCompat.START);
                 break;
             case R.id.chose_date:
+                Calendar c = Calendar.getInstance();
+                new DatePickerDialog(MainActivity.this, 0, new DatePickerDialog.OnDateSetListener() {
 
+                    @Override
+                    public void onDateSet(DatePicker startDatePicker, int startYear, int startMonthOfYear,
+                                          int startDayOfMonth) {
+                        year = startYear;
+                        month =startMonthOfYear+1;
+                        if (year!=0 && month!=0){
+                            List<Biller> tempList = ChangeYearandMonth(year,month);
+                            billerList.clear();
+                            for (int i=0;i<tempList.size();i++){
+                                billerList.add(tempList.get(i));
+                            }
+                            double paytemp,gettemp;
+                            paytemp = Calculatepay(tempList);
+                            gettemp = Calculateincome(tempList);
+                            allpay.setText(String.valueOf(paytemp));
+                            allincome.setText(String.valueOf(gettemp));
+                            Total.setText(String.valueOf(gettemp-paytemp));
+                            adapter_2.notifyDataSetChanged();
+                            year =0;
+                            month =0;
+                        }
+                    }
+                },c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DATE)).show();
+                break;
+            case R.id.Alldate:
+                billerList.clear();
+                List<Biller> billerList_2 = Allbills();
+                for(int i=0;i<billerList_2.size();i++){
+                    billerList.add(billerList_2.get(i));
+                }
+                adapter_2.notifyDataSetChanged();
+                allpay.setText(AllPay());
+                allincome.setText(AllIncome());
+                Total.setText(inAll());
                 break;
                 default:
         }
@@ -115,15 +151,27 @@ public class MainActivity extends AppCompatActivity {
         List<Biller> billerList_2 = DataSupport.findAll(Biller.class);
         return billerList_2;
     }
-
     // TODO: 2019/3/1 统计功能待完成
-    private double AllPay(){
+    private String AllPay(){
         List<Biller> Pay_billerList = DataSupport.where("pay_or_get = ?","pay").find(Biller.class);
         double Total = 0;
         for(int i=0;i<Pay_billerList.size();i++){
-            Pay_billerList.get(i).getCost();
+            Total = Total + Double.parseDouble(Pay_billerList.get(i).getCost());
         }
-        return Total;
+        return String.valueOf(Total);
+    }
+    private String AllIncome(){
+        List<Biller> Pay_billerList = DataSupport.where("pay_or_get = ?","get").find(Biller.class);
+        double Total = 0;
+        for(int i=0;i<Pay_billerList.size();i++){
+            Total = Total + Double.parseDouble(Pay_billerList.get(i).getCost());
+        }
+        return String.valueOf(Total);
+    }
+    private String inAll(){
+        Double Total2 = Double.parseDouble(AllIncome());
+        Double Total = Double.parseDouble(AllPay());
+        return String.valueOf(Total2-Total);
     }
     private void showPopupMenu(View view,int position){
         PopupMenu popupMenu = new PopupMenu(MainActivity.this,view);
@@ -139,7 +187,10 @@ public class MainActivity extends AppCompatActivity {
                         DataSupport.delete(Biller.class,biller_1.getId());
                         billerList.remove(position);
                         adapter_2.notifyDataSetChanged();
-                        Toast.makeText(MainActivity.this,"You Chose Delete",Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this,"Delete",Toast.LENGTH_SHORT).show();
+                        allpay.setText(AllPay());
+                        allincome.setText(AllIncome());
+                        Total.setText(inAll());
                         break;
                     case R.id.edit_it:
                         Biller biller = billerList.get(position);
@@ -178,10 +229,37 @@ public class MainActivity extends AppCompatActivity {
             billerList.add(billerList_2.get(i));
         }
         adapter_2.notifyDataSetChanged();
+        allpay.setText(AllPay());
+        allincome.setText(AllIncome());
+        Total.setText(inAll());
         Log.d("TAG","onRestart");
     }
     public boolean onCreateOptionsMenu(Menu menu){
         getMenuInflater().inflate(R.menu.chose_date,menu);
         return true;
     }
+    private List<Biller> ChangeYearandMonth(int year,int month){
+        List<Biller> billerList;
+        billerList = DataSupport.where("year = ?",String.valueOf(year)).where("month = ?",String.valueOf(month)).find(Biller.class);
+        return billerList;
+    }
+    private double Calculatepay(List<Biller> billerList){
+        double calculate = 0;
+        for(int i=0;i<billerList.size();i++){
+            if(billerList.get(i).getPay_or_get().equals("pay")){
+                calculate += Double.parseDouble(billerList.get(i).getCost());
+            }
+        }
+        return calculate;
+    }
+    private double Calculateincome(List<Biller> billerList){
+        double calculate = 0;
+        for(int i=0;i<billerList.size();i++){
+            if(billerList.get(i).getPay_or_get().equals("get")){
+                calculate += Double.parseDouble(billerList.get(i).getCost());
+            }
+        }
+        return calculate;
+    }
 }
+

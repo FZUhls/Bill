@@ -6,4 +6,9 @@
         android:title="chose_date"
         android:icon="@mipmap/ic_toolbar_date"
         app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/Alldate"
+        android:title="Alldate"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/alldate2"/>
 </menu>
